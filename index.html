@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sổ tay</title>
+  <meta name="theme-color" content="#0f766e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Sổ tay">
+  <meta name="robots" content="noindex">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="#/">📒 Sổ tay</a>
+    <span id="sync" class="sync"></span>
+    <a class="gear" href="#/caidat" aria-label="Cài đặt">⚙️</a>
+  </header>
+  <main id="view"></main>
+  <nav class="tabs" id="tabs">
+    <a href="#/" data-tab="home"><span>🏠</span>Hôm nay</a>
+    <a href="#/lop" data-tab="lop"><span>📚</span>Lớp</a>
+    <a href="#/viec" data-tab="viec"><span>✅</span>Việc</a>
+    <a href="#/hocphi" data-tab="hocphi"><span>💰</span>Học phí</a>
+  </nav>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="config.js?v=1"></script>
+  <script src="parse.js?v=1"></script>
+  <script src="app.js?v=1"></script>
+</body>
+</html>

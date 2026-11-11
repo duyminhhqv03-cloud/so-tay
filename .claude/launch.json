@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "so-tay", "runtimeExecutable": "node", "runtimeArgs": ["tools/mock-server.mjs"], "port": 8768 }
+  ]
+}
