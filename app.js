@@ -241,56 +241,94 @@
   /* ═════════ Nói thành chữ ═════════ */
 
   var Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  var rec = null, recBtn = null;
+  var mic = null;   // phiên nghe đang chạy: { r, btn, finish }
+  var MIC_MAX_MS = 30000;
 
+  /** Dừng phiên nghe. iPhone đôi khi không báo "đã dừng" → tự hủy hẳn sau 1,5 giây. */
   function stopMic() {
-    if (rec) { try { rec.stop(); } catch (e) { /* bỏ qua */ } }
+    var m = mic;
+    if (!m) return;
+    try { m.r.stop(); } catch (e) { /* bỏ qua */ }
+    setTimeout(function () {
+      if (mic !== m) return;
+      try { m.r.abort(); } catch (e) { /* bỏ qua */ }
+      m.finish();
+    }, 1500);
+  }
+
+  /** Ghép kết quả nhận dạng. Safari trên iPhone hay gửi lại cả câu từ đầu (câu sau chứa câu trước)
+   * → thay thế thay vì cộng dồn, để chữ không bị nhân lên làm treo app. */
+  function joinResults(results) {
+    var finals = [], interim = '';
+    for (var i = 0; i < results.length; i++) {
+      var t = String(results[i][0] && results[i][0].transcript || '').trim();
+      if (!t) continue;
+      if (!results[i].isFinal) { interim = t; continue; }
+      var last = finals[finals.length - 1];
+      if (last && t.indexOf(last) === 0) finals[finals.length - 1] = t;
+      else if (!last || last.indexOf(t) !== 0) finals.push(t);
+    }
+    var fin = finals.join(' ');
+    if (interim && fin && interim.indexOf(fin) === 0) interim = interim.slice(fin.length).trim();
+    return { fin: fin, interim: interim };
   }
 
   /** Nút micro: nghe tiếng Việt rồi chèn chữ vào ô target (hoặc gọi onText). */
   function micBtn(target, onText) {
     var btn = h('button', { type: 'button', class: 'mic', 'aria-label': 'Nói để nhập chữ', title: 'Nói để nhập chữ' }, '🎤');
     btn.addEventListener('click', function () {
-      if (rec && recBtn === btn) { stopMic(); return; }
-      stopMic();
+      if (mic) { stopMic(); return; }   // đang nghe (ở nút này hay nút khác) → bấm lần nữa là dừng
       if (!Rec) {
         if (target) target.focus();
         toast('Máy này chưa cho nói trong trang. Bấm vào ô rồi dùng nút 🎤 trên bàn phím.');
         return;
       }
-      var r = new Rec();
+      var r;
+      try { r = new Rec(); } catch (e0) { toast('Không mở được micro.'); return; }
       r.lang = 'vi-VN';
       r.interimResults = true;
-      r.continuous = !onText;
+      r.continuous = false;          // iPhone ổn định hơn: nói xong một câu tự dừng, muốn nói tiếp thì bấm lại
+      r.maxAlternatives = 1;
       var base = target ? target.value : '';
-      var finals = '';
+      var sep = base && !/\s$/.test(base) ? ' ' : '';
+      var last = { fin: '', interim: '' };
+      var done = false, paint = null, maxTimer = null;
+
+      function show(withInterim) {
+        if (!target) return;
+        var txt = last.fin + (withInterim && last.interim ? (last.fin ? ' ' : '') + last.interim : '');
+        target.value = base + (txt ? sep + txt : '');
+        target.dispatchEvent(new Event('input'));
+      }
+      function finish() {
+        if (done) return;
+        done = true;
+        clearTimeout(paint); clearTimeout(maxTimer);
+        r.onresult = r.onerror = r.onend = null;
+        btn.classList.remove('on');
+        if (mic && mic.r === r) mic = null;
+        if (!last.fin && last.interim) last.fin = last.interim;   // iPhone đôi khi không trả kết quả "chốt"
+        last.interim = '';
+        show(false);
+        if (onText && last.fin) onText(last.fin);
+      }
+
       r.onresult = function (ev) {
-        var interim = '';
-        for (var i = ev.resultIndex; i < ev.results.length; i++) {
-          var tx = ev.results[i][0].transcript;
-          if (ev.results[i].isFinal) finals += (finals ? ' ' : '') + tx.trim();
-          else interim += tx;
-        }
-        if (target) {
-          var sep = base && !/\s$/.test(base) ? ' ' : '';
-          target.value = base + sep + finals + (interim ? (finals ? ' ' : '') + interim : '');
-          target.dispatchEvent(new Event('input'));
-        }
+        last = joinResults(ev.results);
+        if (!paint) paint = setTimeout(function () { paint = null; if (!done) show(true); }, 120);
       };
       r.onerror = function (ev) {
-        if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') toast('Chưa được phép dùng micro. Bật quyền micro cho trình duyệt, hoặc dùng 🎤 trên bàn phím.');
-        else if (ev.error === 'no-speech') toast('Chưa nghe thấy gì, thầy nói lại nhé.');
+        if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') toast('Chưa được phép dùng micro. Vào Cài đặt → Safari → Micrô → Cho phép, hoặc dùng 🎤 trên bàn phím.');
+        else if (ev.error === 'no-speech') toast('Chưa nghe thấy gì, thầy bấm 🎤 nói lại nhé.');
         else if (ev.error !== 'aborted') toast('Lỗi micro: ' + ev.error);
+        finish();
       };
-      r.onend = function () {
-        btn.classList.remove('on');
-        if (rec === r) { rec = null; recBtn = null; }
-        if (target) { target.value = base + (base && finals && !/\s$/.test(base) ? ' ' : '') + finals; target.dispatchEvent(new Event('input')); }
-        if (onText && finals) onText(finals);
-      };
-      try { r.start(); } catch (e) { toast('Không mở được micro.'); return; }
-      rec = r; recBtn = btn;
+      r.onend = finish;
+
+      try { r.start(); } catch (e) { toast('Không mở được micro, thử lại sau giây lát.'); return; }
+      mic = { r: r, btn: btn, finish: finish };
       btn.classList.add('on');
+      maxTimer = setTimeout(stopMic, MIC_MAX_MS);
     });
     return btn;
   }
@@ -302,17 +340,23 @@
   /* ═════════ Đăng nhập ═════════ */
 
   function viewLogin() {
-    var pw = h('input', { type: 'password', placeholder: 'Mật khẩu', autocomplete: 'current-password' });
+    // Có ô tên đăng nhập (chỉ đọc) để Chuỗi khóa iCloud / trình duyệt nhận ra và đề nghị lưu, tự điền mật khẩu
+    var user = h('input', { type: 'text', name: 'username', id: 'st-user', autocomplete: 'username', value: 'so-tay', readonly: true, 'aria-label': 'Tài khoản' });
+    var pw = h('input', { type: 'password', name: 'password', id: 'st-pass', placeholder: 'Mật khẩu', autocomplete: 'current-password' });
     var msg = h('p', { class: 'err' });
     var btn = h('button', { class: 'btn primary', type: 'submit' }, 'Mở sổ tay');
-    var form = h('form', { class: 'login card', onsubmit: function (e) {
+    var form = h('form', { class: 'login card', method: 'post', action: '#', onsubmit: function (e) {
       e.preventDefault();
       btn.disabled = true; msg.textContent = '';
       api('login', { password: pw.value }).then(function (res) {
         token = res.token; lsSet(LS.token, token);
+        try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e3) { /* bỏ qua */ }
         render(true); load(); flush();
       }).catch(function (e2) { msg.textContent = e2.message; btn.disabled = false; });
-    } }, h('h1', null, '📒 Sổ tay'), h('p', { class: 'muted' }, 'Nhật ký tiết dạy, việc cần làm và học phí.'), pw, btn, msg);
+    } }, h('h1', null, '📒 Sổ tay'), h('p', { class: 'muted' }, 'Nhật ký tiết dạy, việc cần làm và học phí.'),
+      h('label', { class: 'field' }, h('span', { class: 'lbl' }, 'Tài khoản'), user),
+      h('label', { class: 'field' }, h('span', { class: 'lbl' }, 'Mật khẩu'), pw), btn, msg,
+      h('p', { class: 'muted small' }, 'Đăng nhập một lần là máy nhớ 180 ngày. Khi iPhone hỏi “Lưu mật khẩu?”, bấm Lưu để lần sau tự điền.'));
     setTimeout(function () { pw.focus(); }, 50);
     return form;
   }
@@ -805,6 +849,7 @@
           commit([{ t: 'put', table: 'classes', row: { id: uid('c'), branch: newBranch.value, name: v, order: String(maxO + 1), hidden: '' } }], 'Đã thêm lớp ' + v);
         } }, 'Thêm'))),
         h('p', { class: 'muted small' }, 'Lớp đã nghỉ thì tích “Ẩn” – ghi chú cũ vẫn giữ.')),
+      viewBedtime(),
       h('section', null, h('h2', null, 'Tài khoản'),
         h('div', { class: 'actions' },
           h('button', { class: 'btn', onclick: changePw }, '🔑 Đổi mật khẩu'),
@@ -817,6 +862,35 @@
               recompute(); render(true);
             });
           } }, 'Đăng xuất'))));
+  }
+
+  /* Trang web không được phép bật/tắt Wi‑Fi của iPhone → dùng app Phím tắt (Shortcuts) của Apple.
+   * App chỉ hướng dẫn cài và có nút gọi phím tắt "Mở lại mạng" (phím tắt đó tự hỏi “Chắc chưa?”). */
+  var REOPEN_SHORTCUT = 'Mở lại mạng';
+
+  function viewBedtime() {
+    function step(t) { return h('li', null, t); }
+    return h('section', null, h('h2', null, '🌙 Giờ ngủ – tắt Wi‑Fi lúc 22:00'),
+      h('div', { class: 'card' },
+        h('p', { class: 'small muted' }, 'iPhone không cho trang web tự tắt Wi‑Fi, nên dùng app Phím tắt có sẵn của iPhone. Cài một lần là tối nào 22:00 cũng tự tắt.'),
+        h('div', { class: 'actions' },
+          h('a', { class: 'btn primary', href: 'shortcuts://run-shortcut?name=' + encodeURIComponent(REOPEN_SHORTCUT) }, '📶 Mở lại mạng'),
+          h('a', { class: 'btn', href: 'shortcuts://' }, 'Mở app Phím tắt')),
+        h('details', { class: 'guide' }, h('summary', null, '① Cài tự tắt Wi‑Fi lúc 22:00'),
+          h('ol', null,
+            step('Mở app Phím tắt → tab Tự động hóa → bấm +.'),
+            step('Chọn Thời gian trong ngày → 22:00, Hằng ngày → chọn Chạy ngay lập tức (tắt “Thông báo khi chạy” nếu muốn) → Tiếp.'),
+            step('Chọn Tự động hóa trống mới → Thêm tác vụ → tìm “Wi‑Fi” → chọn Đặt Wi‑Fi → để là Tắt.'),
+            step('(Tùy chọn) Thêm tác vụ “Đặt dữ liệu di động” → Tắt, để tắt cả 4G.'),
+            step('Bấm Xong.'))),
+        h('details', { class: 'guide' }, h('summary', null, '② Tạo phím tắt “' + REOPEN_SHORTCUT + '” (hỏi chắc chưa)'),
+          h('ol', null,
+            step('App Phím tắt → tab Phím tắt → bấm + → đặt tên đúng: ' + REOPEN_SHORTCUT + '.'),
+            step('Thêm tác vụ “Hiển thị cảnh báo”: gõ “Đã quá giờ ngủ. Chắc chắn mở lại mạng chưa?”, bật Hiển thị nút Hủy.'),
+            step('(Muốn khó hơn) thêm một cảnh báo thứ hai: “Hỏi lần nữa: thật sự cần không?”.'),
+            step('Thêm tác vụ Đặt Wi‑Fi → Bật (và Đặt dữ liệu di động → Bật nếu ở bước ① có tắt).'),
+            step('Bấm Xong. Từ giờ bấm nút “📶 Mở lại mạng” ở trên: iPhone hỏi lại, bấm Hủy là thôi, bấm OK mới bật mạng.'))),
+        h('p', { class: 'small muted' }, 'Sổ tay vẫn mở và ghi được khi tắt mạng; sáng mai có mạng lại sẽ tự gửi lên.')));
   }
 
   function changePw() {

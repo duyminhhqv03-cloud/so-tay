@@ -1,15 +1,31 @@
-/* Cho phép mở Sổ tay khi mất mạng: luôn lấy bản mới khi có mạng, mất mạng thì dùng bản đã lưu. */
-var CACHE = 'so-tay-v1';
-self.addEventListener('install', function (e) { self.skipWaiting(); });
-self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
+/* Mở Sổ tay nhanh: lấy ngay bản đã lưu trên máy, đồng thời tải bản mới ở nền cho lần mở sau.
+ * Mất mạng vẫn mở được. Các file có ?v= nên đổi phiên bản là tải file mới ngay. */
+var CACHE = 'so-tay-v2';
+var SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'apple-touch-icon.png'];
+
+self.addEventListener('install', function (e) {
+  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).catch(function () {}));
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function (e) {
+  e.waitUntil(caches.keys().then(function (keys) {
+    return Promise.all(keys.filter(function (k) { return k !== CACHE; }).map(function (k) { return caches.delete(k); }));
+  }).then(function () { return self.clients.claim(); }));
+});
+
 self.addEventListener('fetch', function (e) {
   var req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
-  e.respondWith(fetch(req).then(function (res) {
-    var copy = res.clone();
-    caches.open(CACHE).then(function (c) { c.put(req, copy); });
-    return res;
-  }).catch(function () {
-    return caches.match(req, { ignoreSearch: true }).then(function (r) { return r || caches.match('./'); });
+  var key = req.mode === 'navigate' ? './' : req;
+  e.respondWith(caches.open(CACHE).then(function (c) {
+    return c.match(key).then(function (hit) {
+      var net = fetch(req).then(function (res) {
+        if (res && res.ok) c.put(key, res.clone());
+        return res;
+      });
+      if (hit) { e.waitUntil(net.catch(function () {})); return hit; }
+      return net;
+    });
   }));
 });

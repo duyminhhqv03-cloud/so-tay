@@ -234,3 +234,10 @@ table.fees { border-collapse: separate; border-spacing: 0; width: 100%; font-siz
   max-width: calc(100% - 32px); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; text-align: center;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+details.guide { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
+details.guide > summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+details.guide ol { margin: 8px 0 4px; padding-left: 22px; font-size: 15px; }
+details.guide li { margin: 4px 0; }
+.login .field { text-align: left; }
+.login input[readonly] { color: var(--muted); }
