@@ -864,33 +864,33 @@
           } }, 'Đăng xuất'))));
   }
 
-  /* Trang web không được phép bật/tắt Wi‑Fi của iPhone → dùng app Phím tắt (Shortcuts) của Apple.
-   * App chỉ hướng dẫn cài và có nút gọi phím tắt "Mở lại mạng" (phím tắt đó tự hỏi “Chắc chưa?”). */
-  var REOPEN_SHORTCUT = 'Mở lại mạng';
+  /* Trang web không được phép bật Chế độ máy bay của iPhone → dùng Tự động hóa trong app Phím tắt (Shortcuts).
+   * App chỉ hướng dẫn cài và có nút gọi phím tắt tắt máy bay (phím tắt đó tự hỏi “Chắc chưa?”). */
+  var REOPEN_SHORTCUT = 'Tắt máy bay';
 
   function viewBedtime() {
     function step(t) { return h('li', null, t); }
-    return h('section', null, h('h2', null, '🌙 Giờ ngủ – tắt Wi‑Fi lúc 22:00'),
+    return h('section', null, h('h2', null, '🌙 Giờ ngủ – tự bật Chế độ máy bay'),
       h('div', { class: 'card' },
-        h('p', { class: 'small muted' }, 'iPhone không cho trang web tự tắt Wi‑Fi, nên dùng app Phím tắt có sẵn của iPhone. Cài một lần là tối nào 22:00 cũng tự tắt.'),
+        h('p', { class: 'small muted' }, 'Đến giờ (VD 22:00) iPhone tự bật ✈️ Chế độ máy bay: tắt hết Wi‑Fi, 4G. Cài một lần trong app Phím tắt có sẵn của iPhone.'),
         h('div', { class: 'actions' },
-          h('a', { class: 'btn primary', href: 'shortcuts://run-shortcut?name=' + encodeURIComponent(REOPEN_SHORTCUT) }, '📶 Mở lại mạng'),
+          h('a', { class: 'btn primary', href: 'shortcuts://run-shortcut?name=' + encodeURIComponent(REOPEN_SHORTCUT) }, '✈️ Tắt chế độ máy bay'),
           h('a', { class: 'btn', href: 'shortcuts://' }, 'Mở app Phím tắt')),
-        h('details', { class: 'guide' }, h('summary', null, '① Cài tự tắt Wi‑Fi lúc 22:00'),
+        h('details', { class: 'guide' }, h('summary', null, '① Hẹn giờ tự bật máy bay'),
           h('ol', null,
             step('Mở app Phím tắt → tab Tự động hóa → bấm +.'),
-            step('Chọn Thời gian trong ngày → 22:00, Hằng ngày → chọn Chạy ngay lập tức (tắt “Thông báo khi chạy” nếu muốn) → Tiếp.'),
-            step('Chọn Tự động hóa trống mới → Thêm tác vụ → tìm “Wi‑Fi” → chọn Đặt Wi‑Fi → để là Tắt.'),
-            step('(Tùy chọn) Thêm tác vụ “Đặt dữ liệu di động” → Tắt, để tắt cả 4G.'),
-            step('Bấm Xong.'))),
-        h('details', { class: 'guide' }, h('summary', null, '② Tạo phím tắt “' + REOPEN_SHORTCUT + '” (hỏi chắc chưa)'),
+            step('Chọn Thời gian trong ngày → chọn giờ (VD 22:00) → Hằng ngày → Chạy ngay lập tức → Tiếp.'),
+            step('Chọn Tự động hóa trống mới → Thêm tác vụ → gõ “máy bay” → chọn Đặt Chế độ máy bay → để là Bật.'),
+            step('Bấm Xong. Muốn đổi giờ: vào lại tab Tự động hóa, bấm vào dòng này, sửa giờ.'))),
+        h('details', { class: 'guide' }, h('summary', null, '② Phím tắt “' + REOPEN_SHORTCUT + '” (hỏi chắc chưa)'),
           h('ol', null,
             step('App Phím tắt → tab Phím tắt → bấm + → đặt tên đúng: ' + REOPEN_SHORTCUT + '.'),
-            step('Thêm tác vụ “Hiển thị cảnh báo”: gõ “Đã quá giờ ngủ. Chắc chắn mở lại mạng chưa?”, bật Hiển thị nút Hủy.'),
-            step('(Muốn khó hơn) thêm một cảnh báo thứ hai: “Hỏi lần nữa: thật sự cần không?”.'),
-            step('Thêm tác vụ Đặt Wi‑Fi → Bật (và Đặt dữ liệu di động → Bật nếu ở bước ① có tắt).'),
-            step('Bấm Xong. Từ giờ bấm nút “📶 Mở lại mạng” ở trên: iPhone hỏi lại, bấm Hủy là thôi, bấm OK mới bật mạng.'))),
-        h('p', { class: 'small muted' }, 'Sổ tay vẫn mở và ghi được khi tắt mạng; sáng mai có mạng lại sẽ tự gửi lên.')));
+            step('Thêm tác vụ Hiển thị cảnh báo: “Đã quá giờ ngủ. Chắc chắn tắt chế độ máy bay chưa?”, bật Hiển thị nút Hủy.'),
+            step('Thêm tác vụ Đặt Chế độ máy bay → Tắt. Bấm Xong.'),
+            step('Từ giờ bấm nút “✈️ Tắt chế độ máy bay” ở trên: iPhone hỏi lại, bấm Hủy là thôi, bấm OK mới có mạng.'))),
+        h('details', { class: 'guide' }, h('summary', null, '③ (Tùy chọn) Sáng tự tắt máy bay'),
+          h('p', { class: 'small' }, 'Làm như bước ① nhưng chọn giờ sáng (VD 6:00) và Đặt Chế độ máy bay → Tắt.')),
+        h('p', { class: 'small muted' }, 'Lưu ý: nếu đang ở chế độ máy bay mà thầy tự bật lại Wi‑Fi, iPhone sẽ nhớ và lần sau bật máy bay vẫn để Wi‑Fi. Muốn chắc ăn, ở bước ① thêm tác vụ Đặt Wi‑Fi → Tắt. Sổ tay vẫn mở và ghi được khi không có mạng, có mạng lại sẽ tự gửi lên.')));
   }
 
   function changePw() {
